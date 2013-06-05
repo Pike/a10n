@@ -1,0 +1,3 @@
+[submodule "vendor-local/elmo"]
+	path = vendor-local/elmo
+	url = git://github.com/mozilla/elmo.git
