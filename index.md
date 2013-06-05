@@ -6,7 +6,7 @@ navigation:
     items:
       - Purpose
       - l10n.ini
-      - compare-dirs
+      - Directories
   - header: Infrastructure
     items:
       - Infrastructure
@@ -15,10 +15,12 @@ navigation:
       - Changesource
       - Scheduler
       - Trees
-      - compare-locales
+      - comparisons
       - en-US
       - l10n
-      - Comparisons
+      - Compare jobs
+      - compare-locales
+      - compare-dirs
   - header: Design
     items:
        - Design
@@ -30,6 +32,11 @@ navigation:
 The a10n project feeds elmo with source comparisons between en-US and
 localizations. It also gathers data from mozilla's version control
 systems (currently hg.mo), and updates the data for those in elmo.
+
+The generated data is stored as a **summary** in the elmo database,
+and as a **detailed json**. The latter is currently part of the
+buildbot logs, but targeted to [migrate to
+elasticsearch](https://bugzilla.mozilla.org/show_bug.cgi?id=857107).
 
 Currently, there are two schemes of comparisons supported:
 
@@ -69,8 +76,8 @@ we'd switch to git, the split between repositories would likely stay,
 but we'd reference different branches inside of a single mozilla
 repository for aurora and beta.</div>
 
-compare-dirs
-------------
+Directories
+-----------
 Projects that don't use the directory structure of Firefox, but need support on the l10n dashboard are supported via a helper repository. The prominent example today is **gaia**, the UI part of **Firefox OS**. For those, a pure en-US repository is created, and compared against a repository per localization next to it. There are some features of *compare-locales* like filtering of entries that are not supported in *compare-dirs*.
 
 <table class="table table-bordered small">
@@ -151,7 +158,7 @@ If the all-locales change,
 3. if there are locales dropped
     + update elmo to deactivate that locale's latest `Run`
 
-### compare-locales
+### comparisons
 The **compare-locales** jobs are triggered either by changes to one of
 the repositories holding the en-US files, or to one of the
 repositories in the forest.
@@ -189,9 +196,25 @@ tree.
     4. trigger a compare-dirs job, specifying both en-US and l10n revision, the tree, the locale,
        the source time, and a reference back to the change
 
-Comparisons
------------
-The comparison jobs are two-fold, *compare-locales* and *compare-dirs*.
+Compare jobs
+------------
+The comparison jobs are two-fold, *compare-locales* and
+*compare-dirs*. They do share some characteristics, though.
+
+The comparisons are done on disk, on checked out files. For all
+repositories included in the comparison, the repositories need to be
+checked out with the given revisions, in the same directory structure
+as they're on the upstream server. I.e.,
+http://hg.mozilla.org/l10n-central/de/ is checked out to
+`l10n-central/de`. After the check-out, version control isn't needed,
+thus doing this on `hg shares` or `git clone -s` is fine.
+
+If multiple comparisons run on the same machine, there shouldn't be
+conflicting check-outs. In most scenarios where jobs are running in
+parallel, you're seeing many jobs on the same revision of en-US, thus
+sharing the working dir makes the comparisons benefit from OS disk
+caches. Thus we should be careful about synchronizing jobs on the same
+hardware.
 
 ### compare-locales
 This job requires a revision for each repository, and the data to get
@@ -201,11 +224,41 @@ to the entry point l10n.ini, as well as the locale to compare to.
 This job requires a revision for both en-US and the locale, the
 locale, and the forest in which the two repositories reside.
 
+
+<h1 id="resources" class="well">Resources</h1>
+
+Let's wrap this up by summarizing the jobs and the affected resources.
+
+<table class="table table-bordered">
+<tr>
+<td></td>
+<td>upstream repo</td><td>elmo db</td><td>local clones</td><td>workdir</td><td>ES</td>
+</tr>
+<tr>
+<td>poller</td>
+<td>R</td><td>R</td><td></td><td></td><td></td>
+</tr>
+<tr>
+<td>repo</td>
+<td>R</td><td>W</td><td>W</td><td></td><td></td>
+</tr>
+<tr>
+<td>changesource</td>
+<td></td><td>?</td><td>R</td><td></td><td></td>
+</tr>
+<tr>
+<td>scheduler</td>
+<td>R</td><td></td><td></td><td></td><td></td>
+</tr>
+<tr>
+<td>compare</td>
+<td></td><td>W</td><td></td><td>RW</td><td>W</td>
+</tr>
+</table>
+
+
 <h1 id="design" class="well">Design</h1>
 
-The automation project needs to deal with the following flow:
-1. scrape hg.m.o for new repositories and pushes
-1. trigger tasks for two event types
-    + for each new repository, trigger a DatabaseCreateTask(repo_name, repo_url)
-    + for each new push, trigger a
-      PushDataTask(repo_name, push_id, push_user, push_date, push_changesets)
+This automation is currently implemented based on [buildbot 0.7.12+](buildbot).
+
+The a10n repo will hold an implementation based on [queues and celery](design).
