@@ -21,6 +21,10 @@ navigation:
       - Compare jobs
       - compare-locales
       - compare-dirs
+      - Collapsing Builds
+  - header: Resources
+    items:
+       - Resources
   - header: Design
     items:
        - Design
@@ -223,6 +227,19 @@ to the entry point l10n.ini, as well as the locale to compare to.
 ### compare-dirs
 This job requires a revision for both en-US and the locale, the
 locale, and the forest in which the two repositories reside.
+
+### Collapsing Builds
+Every now and then, you get more than one change that trigger the same
+locale for the same tree. Merge days are a perfect example, where we
+change both en-US and l10n, all around the same time. In those cases,
+it's a fair optimization to only compare the latest revisions against
+each other.
+
+This is fairly trivial as long as all changes are globally ordered,
+just update the existing request to take a new revision. If you don't
+know that the order of the changes is given, things are more tricky,
+i.e., you need to find out which of the available revisions is newer
+than the other.
 
 
 <h1 id="resources" class="well">Resources</h1>
