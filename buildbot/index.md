@@ -167,4 +167,6 @@ adds the stdout blob to the log, and serializes the json data to the
 log channel 5. It also updates elmo with creating a new `Run` object
 with the summary information, and marks that run as active.
 
-`compare-dirs` is the same thing in green, as the Germans say. It's merely using a different entry point to compare-locales, `Mozilla.CompareLocales.compareDirs
+`compare-dirs` is the same thing in green, as the Germans say. It's
+merely using a different entry point to compare-locales,
+`Mozilla.CompareLocales.compareDirs`.
