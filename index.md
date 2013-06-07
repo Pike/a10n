@@ -265,7 +265,7 @@ Let's wrap this up by summarizing the jobs and the affected resources.
 </tr>
 <tr>
 <td>scheduler</td>
-<td>R</td><td></td><td></td><td></td><td></td>
+<td>R</td><td>R</td><td></td><td></td><td></td>
 </tr>
 <tr>
 <td>compare</td>
