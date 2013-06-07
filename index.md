@@ -271,6 +271,10 @@ Let's wrap this up by summarizing the jobs and the affected resources.
 <td>compare</td>
 <td></td><td>W</td><td></td><td>RW</td><td>W</td>
 </tr>
+<tr class="info">
+<td>elmo</td>
+<td></td><td>RW</td><td>R</td><td></td><td>R</td>
+</tr>
 </table>
 
 
