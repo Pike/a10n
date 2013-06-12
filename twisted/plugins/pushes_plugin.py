@@ -26,16 +26,18 @@ except ImportError:
 import site
 site.addsitedir('vendor-local')
 
+from kombu import Connection
+from kombu.common import maybe_declare
+from kombu.pools import producers
+from a10n.hg_elmo.queues import hg_exchange
+
 
 class Options(usage.Options):
-    optParameters = [["settings", "s", None, "Django settings module."],
+    optParameters = [["settings", "s", None,
+                      "Django settings module. DEFAULT: a10n.settings"],
                      ["time", "t", "1", "Poll every n seconds."],
                      ["limit", "l", "200", "Limit pushes to n at a time."]
                      ]
-    optFlags = \
-        [
-        ["noup", "n", "No updates of repos"],
-        ]
 
 
 class pushback_iter(object):
@@ -73,11 +75,10 @@ class pushback_iter(object):
 
 
 def getPoller(options):
-    if options["settings"] is None:
-            raise usage.UsageError("specify a settings module")
-    os.environ["DJANGO_SETTINGS_MODULE"] = options["settings"]
+    os.environ["DJANGO_SETTINGS_MODULE"] = (options["settings"] or
+                                            "a10n.settings")
+    from django.conf import settings
     from life.models import Repository, Forest, Locale
-    from pushes.utils import getURL, handlePushes, PushJS
 
     class PushPoller(object):
         '''PushPoller stores the state of our coopertive iterator.
@@ -93,9 +94,38 @@ def getPoller(options):
             self.repos = []
             self.cache = {}
             self.moredata = {}
+            self.latest_push = {}
             self.start_cycle = None
-            self.do_update = not options['noup']
+            self.sentry = None
+            if hasattr(settings, 'RAVEN_CONFIG'):
+                from raven import Client
+                self.sentry = Client(**settings.RAVEN_CONFIG)
             pass
+
+        def getURL(self, repo, limit):
+            if repo.id not in self.latest_push:
+                self.latest_push[repo.id] = repo.last_known_push()
+            lkp = self.latest_push[repo.id]
+            return '%sjson-pushes?startID=%d&endID=%d' % \
+                (repo.url, lkp, lkp + limit)
+
+        def handlePushes(self, repo_id, submits):
+            self.latest_push[repo_id] = submits[-1]['id']
+            connection = Connection(settings.TRANSPORT)
+            with producers[connection].acquire(block=True) as producer:
+                maybe_declare(hg_exchange, producer.channel)
+                msg = {'type': 'hg-push',
+                       'repository_id': repo_id,
+                       'pushes': submits}
+                try:
+                    producer.publish(msg, exchange=hg_exchange,
+                                     routing_key='hg')
+                except KeyboardInterrupt:
+                    raise
+                except Exception:
+                    if self.sentry:
+                        self.sentry.captureException()
+                    raise
 
         def poll(self):
             '''poll iterates over the repos and updates the local database.
@@ -142,7 +172,7 @@ def getPoller(options):
                             self.cache[repo.id] = pushes
                             d = defer.succeed(None)
                     if d is None:
-                        jsonurl = getURL(repo, self.limit)
+                        jsonurl = self.getURL(repo, self.limit)
                         if self.debug:
                             log.msg(jsonurl)
                         d = getPage(str(jsonurl), timeout=self.timeout)
@@ -158,9 +188,11 @@ def getPoller(options):
             # convert pushes to sorted list
             if repo.id not in self.cache:
                 self.cache[repo.id] = []
-            self.cache[repo.id] += sorted((PushJS(k, v)
-                                           for k, v in pushes.iteritems()),
-                                          key=lambda p: p.id)
+            # pushes maps string keys to pushes, we want to order by number
+            push_blobs = [dict(pushes[id].items() + [('id', int(id))])
+                          for id in pushes.iterkeys()]
+            push_blobs.sort(key=lambda blob: blob['id'])
+            self.cache[repo.id] += push_blobs
             # signal to load more data if this push hit the limits
             if len(pushes) == self.limit:
                 self.moredata[repo.id] = True
@@ -203,7 +235,7 @@ def getPoller(options):
                         log.msg("pushing %s to %d" %
                                 (", ".join(map(str, submits)),
                                  tips[0][0]))
-                    handlePushes(tips[0][0], submits, self.do_update)
+                    self.handlePushes(tips[0][0], submits)
                     del other[:i]
                     if not other:
                         # other repo is empty
@@ -230,7 +262,7 @@ def getPoller(options):
                         log.msg("pushing %s to %d" %
                                 (", ".join(map(str, submits)),
                                  repo.id))
-                    handlePushes(repo.id, submits, self.do_update)
+                    self.handlePushes(repo.id, submits)
                     del pushes[:i]
 
         def gotForest(self, page, forest, repos):

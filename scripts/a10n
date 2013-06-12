@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+import argparse
+import os
+import os.path
+import site
+toplevel = os.path.join(os.path.dirname(__file__), '..')
+site.addsitedir(os.path.join(toplevel, 'vendor-local'))
+site.addsitedir(toplevel)
+
+parser = argparse.ArgumentParser(description='Trigger l10n automation jobs.')
+parser.add_argument('--settings', default='a10n.settings',
+                    help='Override django settings (DEFAULT: a10n.settings)')
+
+subparsers = parser.add_subparsers(dest='cmd',
+                                   help='a10n commands')
+
+parser_help = subparsers.add_parser('help', help='Display help')
+parser_help.add_argument('command', nargs='?',
+                         help='Display help for subcommand')
+
+hg_desc = ('Starts a worker to process the hg queue and '
+           'update the elmo database.')
+parser_hg = subparsers.add_parser('hg', description=hg_desc,
+                                  help='Start the hg worker')
+
+args = parser.parse_args()
+
+if args.cmd == 'help':
+    if args.command and args.command in subparsers.choices:
+        subparsers.choices[args.command].print_help()
+    else:
+        parser.print_help()
+    parser.exit()
+
+os.environ["DJANGO_SETTINGS_MODULE"] = args.settings
+
+if args.cmd == 'hg':
+    import a10n.hg_elmo.worker
+    a10n.hg_elmo.worker.run(args)

@@ -17,6 +17,10 @@ DATABASES = {
         'TEST_COLLATION': 'utf8_general_ci',
     },
 }
-REPOSITORY_BASE = ''
 
-buildbase = ''
+# if you want to test the Sentry (errormill.mozilla.org)
+#RAVEN_CONFIG = {
+#    'dsn': ''  # see https://errormill.mozilla.org/
+#}
+
+REPOSITORY_BASE = ''

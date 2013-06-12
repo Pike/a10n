@@ -1,4 +1,8 @@
 mercurial==2.1.2
 Twisted==13.0.0
-simplejson
+simplejson==3.3.0
+amqp==1.0.11
+anyjson==0.3.3
+kombu==2.5.10
+raven==3.3.7
 MySQL-python

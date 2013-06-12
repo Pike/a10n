@@ -3,4 +3,4 @@
 twistd.log
 twistd.pid
 twisted/plugins/dropin.cache
-autosettings/local.py
+a10n/settings/local.py
