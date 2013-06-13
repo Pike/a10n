@@ -53,7 +53,7 @@ Hg Poller
 
 The hg poller is based on `twisted` (13.0.0 at this point). It's feeding `hg-push` events into the `hg` queue. These events have the following structure:
 
-```JSON
+{% highlight json %}
 {
     "type": "hg-push",
     "repository_id": int,
@@ -67,7 +67,7 @@ The hg poller is based on `twisted` (13.0.0 at this point). It's feeding `hg-pus
         }
     ]
 }
-```
+{% endhighlight %}
 
 
 <h1 id="workers" class="well">Workers</h1>
