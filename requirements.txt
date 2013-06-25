@@ -7,3 +7,4 @@ anyjson==0.3.3
 kombu==2.5.10
 raven==3.3.7
 MySQL-python
+argparse

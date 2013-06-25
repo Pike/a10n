@@ -41,6 +41,8 @@ class Worker(ConsumerMixin):
                          [PushJS(p['id'], p) for p in body['pushes']],
                          do_update=False)
             self.retries = 0
+        except KeyboardInterrupt:
+            raise
         except Exception:
             self.retries += 1
             logger.error('handlePushes failed: %d' % self.retries,
