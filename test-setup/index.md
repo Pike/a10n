@@ -37,6 +37,11 @@ for testing.
 
 Please check their corresponding documentation for installation notes.
 
+Also make sure that you're having a `~/.hgrc` that specifies your username,
+
+     [ui]
+     username = ...
+
 
 Initial setup
 -------------
@@ -54,14 +59,14 @@ submodules, not recursive.
 
 Next, run the setup script,
 
-    python scripts/create-test-env.py $(HOME)/stage
+    python scripts/create-test-env.py $HOME/stage
 
 This is going to create
 
 * `@env`, the virtualenv you'll want to activate, unless noted otherwise
-* `$(HOME)/stage/repos`, with the `mozilla` and `l10n/*` upstream repositories
-* `$(HOME)/stage/workdir`, with the `mozilla` and `l10n/*` working clones
-* `$(HOME)/stage/webdir.conf`, to use to run the webserver
+* `$HOME/stage/repos`, with the `mozilla` and `l10n/*` upstream repositories
+* `$HOME/stage/workdir`, with the `mozilla` and `l10n/*` working clones
+* `$HOME/stage/webdir.conf`, to use to run the webserver
 
 There are a few **configurations** you want to do in *a10n*, the file to edit is `a10n/settings/local.py`. The following should work with a local sqlite database.
 
@@ -107,7 +112,7 @@ shut them down in the reverse order.
 1. rabbitmq
 1. hg server:
    <pre><code>. @env/bin/activate
-   cd $(HOME)/stage/
+   cd $HOME/stage/
    hg serve --webdir-conf=webdir.conf -p 8001</code></pre>
 1. sentry, if you want to
    <pre><code>sentry runserver 9000</code></pre>
@@ -128,7 +133,7 @@ Doing stuff
 Now that everything is running, let's do something.
 
     . @env/bin/activate
-    cd $(HOME)/stage/workdir/mozilla
+    cd $HOME/stage/workdir/mozilla
     hg push
     cd ../l10n
     for r in *; do hg -R $r push; done
