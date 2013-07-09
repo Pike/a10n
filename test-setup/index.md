@@ -9,6 +9,7 @@ navigation:
       - Requirements
       - Initial setup
       - Running
+      - Doing stuff
 ---
 
 <div class="alert">This document will evolve as the implementations do.</div>
@@ -116,3 +117,20 @@ shut them down in the reverse order.
 1. the twistd hg poller
    <pre><code>. @env/bin/activate
    twistd -n get-pushes</code></pre>
+
+You can start and stop the elmo webserver independently of the
+automation pieces.
+
+
+Doing stuff
+-----------
+
+Now that everything is running, let's do something.
+
+    . @env/bin/activate
+    cd $(HOME)/stage/workdir/mozilla
+    hg push
+    cd ../l10n
+    for r in *; do hg -R $r push; done
+
+You should see the new pushes being recognized in the log of the twisted poller, and then in the a10n worker. You can verify them being added to the elmo database by looking at [http://localhost:8000/source/pushes/](http://localhost:8000/source/pushes/).
