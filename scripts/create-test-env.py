@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 
-ENVPATH = '@env'
+ENVPATH = 'env'
 
 
 def ensureCustomRepository(reponame, revision, hgcustom_orig, env_path):
