@@ -211,24 +211,21 @@ def getPoller(options):
                 log.msg("submitting %s to %s" % (', '.join(map(str, pushes)),
                                                  repo.name))
 
-            def get_date(p, op):
-                return op(map(lambda d: d['date'], p.itervalues()))
-
-            tips = sorted(((id, p[0].date)
+            tips = sorted(((id, p[0]['date'])
                            for id, p in self.cache.iteritems() if p),
                           key=lambda t: t[1])
             while pushes:
-                if tips and pushes[0].date > tips[0][1]:
+                if tips and pushes[0]['date'] > tips[0][1]:
                     # other repos come first, get them done
                     other = self.cache[tips[0][0]]
                     if len(tips) > 1:
-                        stopdate = min(pushes[0].date,
-                                       self.cache[tips[1][0]][0].date)
+                        stopdate = min(pushes[0]['date'],
+                                       self.cache[tips[1][0]][0]['date'])
                     else:
-                        stopdate = pushes[0].date
+                        stopdate = pushes[0]['date']
                     i = 0
                     while i < len(other) and \
-                            other[i].date <= stopdate:
+                            other[i]['date'] <= stopdate:
                         i += 1
                     submits = other[:i]
                     if self.debug:
@@ -245,15 +242,15 @@ def getPoller(options):
                             other_repo = Repository.objects.get(id=tips[0][0])
                             self.repos.pushback(other_repo)
                             return
-                    tips = sorted(((id, p[0].date)
+                    tips = sorted(((id, p[0]['date'])
                                    for id, p in self.cache.iteritems() if p),
                                   key=lambda t: t[1])
                 else:
                     i = 0
                     if tips:
-                        stopdate = self.cache[tips[0][0]][0].date
+                        stopdate = self.cache[tips[0][0]][0]['date']
                         while i < len(pushes) and \
-                                pushes[i].date <= stopdate:
+                                pushes[i]['date'] <= stopdate:
                             i += 1
                     else:
                         i = len(pushes)
