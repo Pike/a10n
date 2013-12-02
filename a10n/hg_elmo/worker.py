@@ -21,7 +21,7 @@ class Worker(ConsumerMixin):
     def __init__(self, connection, settings):
         self.connection = connection
         self.retries = 0
-        self.mas_retries = settings.MAX_HG_RETRIES
+        self.max_retries = settings.MAX_HG_RETRIES
         self.sentry = None
         if hasattr(settings, 'RAVEN_CONFIG'):
             from raven import Client
