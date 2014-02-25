@@ -1,4 +1,4 @@
-mercurial==2.1.2
+mercurial==2.8
 Django==1.4.5
 Twisted==13.0.0
 simplejson==3.3.0

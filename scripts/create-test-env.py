@@ -134,9 +134,9 @@ def createEnvironment(env_path, hgcustom_orig, without_site):
             raise RuntimeError("Failed to create virtualenv in " + env_path)
     hgcustom = \
         {
-            'hg_templates': '672340227bea',
-            'hghooks': '1e7a365890ab',
-            'pushlog': 'e99a36d3fd4a'
+            'hg_templates': 'c9eabbb3ec47',
+            'hghooks': 'd5e45273fd1d',
+            'pushlog': '0ffe19e2e343'
         }
     if not (hgcustom_orig.startswith('http://') or
             hgcustom_orig.startswith('https://')):
