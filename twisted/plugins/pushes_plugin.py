@@ -150,8 +150,11 @@ def getPoller(options):
                     lag = n - self.start_cycle
                     log.msg("Cycle took %d seconds" % lag.seconds)
                 self.start_cycle = n
-                repos = list(Repository.objects.filter(forest__isnull=True))
-                self.forests = pushback_iter(Forest.objects.all())
+                repos = list(Repository.objects.filter(forest__isnull=True,
+                                                       archived=False))
+                nonarchived_forests = (Forest.objects
+                                       .filter(archived=False))
+                self.forests = pushback_iter(nonarchived_forests)
                 for forest in self.forests:
                     url = str(forest.url + '?style=raw')
                     d = getPage(url, timeout=self.timeout)
