@@ -4,16 +4,17 @@
 
 from __future__ import with_statement
 import time
+import logging
 
 from kombu import Connection
 from kombu.mixins import ConsumerMixin
-from kombu.log import setup_logging
 
 from .queues import hg_queues
 
 from pushes.utils import handlePushes, PushJS
 
-logger = setup_logging('INFO')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
+logger = logging.getLogger()
 
 
 class Worker(ConsumerMixin):
