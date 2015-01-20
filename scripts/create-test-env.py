@@ -12,8 +12,9 @@ import sys
 ENVPATH = 'env'
 
 
-def ensureCustomRepository(reponame, revision, hgcustom_orig, env_path):
-    base = os.path.join(env_path, 'hgcustom')
+def ensureVCTRepository(revision, hgcustom_orig, env_path):
+    base = env_path
+    reponame = 'version-control-tools'
     if not os.path.isdir(base):
         os.makedirs(base)
     if os.path.isdir(os.path.join(base, reponame, '.hg')):
@@ -47,12 +48,12 @@ def ensureRepo(leaf, dest, env_path, push_l10n=True):
     tail = '''
 [hooks]
 pretxnchangegroup.a_singlehead = python:mozhghooks.single_head_per_branch.hook
-pretxnchangegroup.z_linearhistory = python:mozhghooks.pushlog.log
 
 [extensions]
-pushlog-feed = %(env)s/hgcustom/pushlog/pushlog-feed.py
-buglink = %(env)s/hgcustom/pushlog/buglink.py
-hgwebjson = %(env)s/hgcustom/pushlog/hgwebjson.py
+pushlog = %(env)s/version-control-tools/hgext/pushlog
+pushlog-feed = %(env)s/version-control-tools/hgext/pushlog-legacy/pushlog-feed.py
+buglink = %(env)s/version-control-tools/hgext/pushlog-legacy/buglink.py
+hgwebjson = %(env)s/version-control-tools/hgext/pushlog-legacy/hgwebjson.py
 '''
     hgrc = open(os.path.join(base, leaf, '.hg', 'hgrc'), 'a')
     hgrc.write(tail % {'env': os.path.abspath(env_path)})
@@ -111,7 +112,7 @@ repos = repos
 
 [web]
 style = gitweb_mozilla
-templates = %(env)s/hgcustom/hg_templates
+templates = %(env)s/version-control-tools/hgtemplates
 '''
     if not os.path.isfile(os.path.join(dest, 'webdir.conf')):
         open(os.path.join(dest, 'webdir.conf'),
@@ -132,18 +133,11 @@ def createEnvironment(env_path, hgcustom_orig, without_site):
         rv = subprocess.check_call(venv_cmd)
         if rv:
             raise RuntimeError("Failed to create virtualenv in " + env_path)
-    hgcustom = \
-        {
-            'hg_templates': 'c9eabbb3ec47',
-            'hghooks': 'd5e45273fd1d',
-            'pushlog': '0ffe19e2e343'
-        }
     if not (hgcustom_orig.startswith('http://') or
             hgcustom_orig.startswith('https://')):
         hgcustom_orig = os.path.expanduser(hgcustom_orig)
         hgcustom_orig = os.path.abspath(hgcustom_orig)
-    for name, rev in hgcustom.iteritems():
-        ensureCustomRepository(name, rev, hgcustom_orig, env_path)
+    ensureVCTRepository('008c8d7eb2d5', hgcustom_orig, env_path)
 
 
 def setupEnvironment(env_path):
@@ -155,7 +149,7 @@ def setupEnvironment(env_path):
     if rv:
         raise RuntimeError("Failed to install requirements in " + env_path)
     rv = subprocess.check_call(['python', 'setup.py', 'install'],
-                               cwd=os.path.join(env_path, 'hgcustom',
+                               cwd=os.path.join(env_path, 'version-control-tools',
                                                 'hghooks'))
     if rv:
         raise RuntimeError("Failed to install hghooks")
