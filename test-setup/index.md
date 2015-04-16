@@ -71,9 +71,11 @@ Next, run the setup script,
 This is going to create
 
 * `env`, the virtualenv you'll want to activate, unless noted otherwise
-* `$HOME/stage/repos`, with the `mozilla` and `l10n/*` upstream repositories
-* `$HOME/stage/workdir`, with the `mozilla` and `l10n/*` working clones
-* `$HOME/stage/webdir.conf`, to use to run the webserver
+* a staging environment for your hg repositories
+  * `$HOME/stage/repos`, with the `mozilla` and `l10n/*` upstream repositories
+  * `$HOME/stage/workdir`, with the `mozilla` and `l10n/*` working copies<br>
+*You'll edit, commit and push in these repositories.*
+  * `$HOME/stage/webdir.conf`, to use to run the webserver
 
 There are a few **configurations** you want to do in *a10n*, the file to edit is `a10n/settings/local.py`. The following should work with a local sqlite database.
 
@@ -107,10 +109,18 @@ Please check on the elmo wiki on howto
 
 You'll want to use the same settings for `DATABASES` and `REPOSITORY_BASE` as in *a10n*.
 
+Make sure you did create the database, and ran the initial migrations when
+setting up elmo at this point.
+
 In the *elmo* env, you want to load our test fixture next,
 
     ./manage.py loaddata localhost
 
+This will add the `mozilla` repository and the `l10n` forest to your database,
+and thus get them picked up by the automation infrastucture. This fixture
+assumes that the hg server is localhost, and `hg serve` runs on port `8001`.
+If you tweak either in your local setup, you need to tweak the entries in the
+database, too.
 
 <h1 id="running" class="well">Running</h1>
 
