@@ -29,8 +29,15 @@ to set one up, including
 Requirements
 ------------
 
-You'll need mercurial, git, and
-[rabbitmq](http://www.rabbitmq.com/). If you want to enable error
+You'll need
+
+* mercurial and git
+* [rabbitmq](http://www.rabbitmq.com/)
+* [elasticsearch 1.2.1](https://www.elastic.co/downloads/past-releases/elasticsearch-1-2-1)
+* python and virtualenv (2.6 for now) (including headers)
+* MySQL (including headers)
+
+If you want to enable error
 logging, you'll also need a setup for
 [sentry](https://getsentry.com/welcome/). A local install works fine
 for testing.
@@ -72,6 +79,8 @@ There are a few **configurations** you want to do in *a10n*, the file to edit is
 
     from base import *
     
+    SECRET_KEY = 'Do Not Tell Me'
+    
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -92,9 +101,9 @@ There are a few **configurations** you want to do in *a10n*, the file to edit is
     #}
 
 
-Onwards to setting up **elmo**. Please check on the elmo wiki on how
-to [run elmo
-locally](https://github.com/mozilla/elmo/wiki/Running-locally).
+Use the same configuration here as you do when to setting up **elmo**.
+Please check on the elmo wiki on howto
+[run elmo locally](https://github.com/mozilla/elmo/wiki/Running-locally).
 
 You'll want to use the same settings for `DATABASES` and `REPOSITORY_BASE` as in *a10n*.
 
@@ -130,12 +139,30 @@ automation pieces.
 Doing stuff
 -----------
 
-Now that everything is running, let's do something.
+Now that everything is running, let's do something. Whenever you want to
+interact with the repositories, you should have the `virtualenv` for a10n
+activated:
 
     . env/bin/activate
+
+Let's push the changes the script prepared in 'mozilla':
+
     cd $HOME/stage/workdir/mozilla
     hg push
+
+and all our localizations:
+
     cd ../l10n
     for r in *; do hg -R $r push; done
 
-You should see the new pushes being recognized in the log of the twisted poller, and then in the a10n worker. You can verify them being added to the elmo database by looking at [http://localhost:8000/source/pushes/](http://localhost:8000/source/pushes/).
+You should see the new pushes being recognized in the log of the twisted
+poller, and then in the a10n worker. You can verify them being added to the
+elmo database by looking at
+[http://localhost:8000/source/pushes/](http://localhost:8000/source/pushes/).
+
+Running buildbot
+----------------
+
+If you're interested in running the buildbot automation to create statistics
+in elmo, now is a good time to head over to
+[test-master setup](http://pike.github.io/master-ball/test-master/).
