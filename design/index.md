@@ -35,26 +35,30 @@ Implementation
 The implementation of a10n is in python. We're using kombu as
 low-level queue API, and rabbitmq as queue implementation. Redis as
 queue backend doesn't seem to support `requeue`, so even if we use
+redis for other aspects, the queue itself should be rabbitmq.
 
 
 Configuration
 -------------
 
-The configuration is held in `a10n/autosettings`, a python module
+The configuration is held in `a10n/settings`, a python module
 suitable to configure `django`. Local configurations go into
 `a10n/local.py`, an adaptation of `a10n/local.py-dist`.
-redis for other aspects, the queue itself should be rabbitmq.
 
 
 <h1 id="entrypoints" class="well">Entrypoints</h1>
 
-The entrypoints to the queues are the version control systems. We're starting off with a poller on http://hg.mozilla.org/, which is ported over from master-ball.
+The entrypoints to the queues are the version control systems. We're starting
+off with a poller on http://hg.mozilla.org/, which is ported over from
+master-ball.
 
 
 Hg Poller
 ---------
 
-The hg poller is based on `twisted` (13.0.0 at this point). It's feeding `hg-push` events into the `hg` queue. These events have the following structure:
+The hg poller is based on `twisted` (13.0.0 at this point). It's feeding
+`hg-push` events into the `hg` queue. These events have the following
+structure:
 
 {% highlight json %}
 {

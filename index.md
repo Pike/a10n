@@ -38,9 +38,8 @@ localizations. It also gathers data from mozilla's version control
 systems (currently hg.mo), and updates the data for those in elmo.
 
 The generated data is stored as a **summary** in the elmo database,
-and as a **detailed json**. The latter is currently part of the
-buildbot logs, but targeted to [migrate to
-elasticsearch](https://bugzilla.mozilla.org/show_bug.cgi?id=857107).
+and as a **detailed json**. The detailed json is stored in
+elasticsearch.
 
 Currently, there are two schemes of comparisons supported:
 
@@ -76,13 +75,19 @@ with `releases/l10n/mozilla-aurora/ab-CD`.
 
 <div class="alert alert-error">This is rather tightly integrated to
 the use of different mercurial repositories for different branches. If
-we'd switch to git, the split between repositories would likely stay,
+we'd switch to unified repositories (git or mercurial), the split between
+repositories per locale would likely stay,
 but we'd reference different branches inside of a single mozilla
 repository for aurora and beta.</div>
 
 Directories
 -----------
-Projects that don't use the directory structure of Firefox, but need support on the l10n dashboard are supported via a helper repository. The prominent example today is **gaia**, the UI part of **Firefox OS**. For those, a pure en-US repository is created, and compared against a repository per localization next to it. There are some features of *compare-locales* like filtering of entries that are not supported in *compare-dirs*.
+Projects that don't use the directory structure of Firefox, but need support on
+the l10n dashboard are supported via a helper repository. The prominent example
+today is **gaia**, the UI part of **Firefox OS**. For those, a pure en-US
+repository is created, and compared against a repository per localization next
+to it. There are some features of *compare-locales* like filtering of entries
+that are not supported in *compare-dirs*.
 
 <table class="table table-bordered small">
 <tr>
@@ -131,8 +136,8 @@ files for those changes and submits them to the schedulers.
 
 <div class="alert alert-error">This is very bound to mercurial, and
 it's notion of having files as part of the changeset info right
-now. In a git-world, this would need to know the previous ref of the
-updated branch, and use a diff algorithm to find affected files.</div>
+now. In a world with unified repositories, this would need to know the previous
+ref of the updated branch, and use a diff algorithm to find affected files.</div>
 
 Scheduler
 ---------
@@ -189,7 +194,7 @@ Each tree is associated with exactly one forest, with a repository for each loca
 touching a file in one of the directories for that tree. Note that
 tree.
 5. For each affected tree:
-    1. check if the locale is enable, if not, skip
+    1. check if the locale is enabled, if not, skip
     2. find all revisions for the en-US repositories
     3. trigger a comparison, specifying all revisions of the repos, the tree, the locale,
        the source time (push_date of the change), and a reference back to the change
