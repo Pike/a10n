@@ -1,5 +1,5 @@
-mercurial==3.2.4
-Django==1.4.5
+mercurial==3.7.3
+Django==1.4.21
 Twisted==13.0.0
 simplejson==3.3.0
 amqp==1.0.11
