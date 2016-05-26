@@ -1,2 +1,2 @@
 name: a10n
-pygments: true
+highlighter: pygments
