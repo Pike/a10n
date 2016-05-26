@@ -79,6 +79,7 @@ This is going to create
 
 There are a few **configurations** you want to do in *a10n*, the file to edit is `a10n/settings/local.py`. The following should work with a local sqlite database.
 
+```python
     from base import *
     
     SECRET_KEY = 'Do Not Tell Me'
@@ -101,7 +102,7 @@ There are a few **configurations** you want to do in *a10n*, the file to edit is
     #RAVEN_CONFIG = {
     #    'dsn': 'http://user:pw@localhost:9000/2'  # see api keys on your local sentry install
     #}
-
+```
 
 Use the same configuration here as you do when to setting up **elmo**.
 Please check on the elmo wiki on howto
