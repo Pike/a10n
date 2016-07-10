@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import optparse
+import argparse
 import os
 import os.path
 import subprocess
@@ -175,53 +175,53 @@ def setupWorkdir(dest, env_path, push_l10n=False):
 
 
 if __name__ == "__main__":
-    p = optparse.OptionParser()
-    p.add_option('-v', dest='verbose', action='store_true')
-    p.add_option('--without-site', default=False, action='store_true',
+    p = argparse.ArgumentParser()
+    p.add_argument("stagedir", help="Directory to use to create the staging environment")
+    p.add_argument('-v', dest='verbose', action='store_true')
+    p.add_argument('--without-site', default=False, action='store_true',
                  help='Disable site-packages in virtual envs [false]')
-    p.add_option('--hgcustom', default='http://hg.mozilla.org/hgcustom/')
-    g = optparse.OptionGroup(p, 'Internal use',
+    p.add_argument('--hgcustom', default='http://hg.mozilla.org/hgcustom/')
+    g = p.add_argument_group('Internal use',
                              'These options are to control'
                              ' the flow of the script itself')
-    g.add_option('--stage', default='env',
+    g.add_argument('--stage', default='env',
                  help='Specify the stage to run [env|setup|repos]')
-    p.add_option_group(g)
-    (options, args) = p.parse_args()
+    p.add_argument_group(g)
+    args = p.parse_args()
 
-    dest = args[0]
+    dest = args.stagedir
 
     def nextcmd(stage):
         rv = ['python', __file__]
-        for k, v in options.__dict__.iteritems():
+        for k, v in vars(args).iteritems():
             if k == 'verbose':
                 if v:
                     rv.append('-v')
             elif k == 'without_site':
                 rv.append('--without-site')
+            elif k == 'hgcustom':
+                rv.append('--hgcustom=' + v)
             elif k == 'stage':
                 rv.append('--stage=' + stage)
-            else:
-                rv.append('--%s=%s' % (k.replace('_', '-'), v))
         rv.append(dest)
         return rv
 
     nextstage = None
     env = os.environ.copy()
-    print options.stage, sys.executable
-    if options.stage == 'env':
-        createEnvironment(ENVPATH, options.hgcustom, options.without_site)
+    if args.stage == 'env':
+        createEnvironment(ENVPATH, args.hgcustom, args.without_site)
         nextstage = 'setup'
         env['PATH'] = (os.path.abspath(os.path.join(ENVPATH, 'bin'))
                        + os.pathsep
                        + env['PATH'])
-    elif options.stage == 'setup':
+    elif args.stage == 'setup':
         setupEnvironment(ENVPATH)
         nextstage = 'repos'
-    elif options.stage == 'repos':
+    elif args.stage == 'repos':
         setupWorkdir(dest, ENVPATH)
         print 'done'
     if nextstage is not None:
         rv = subprocess.call(nextcmd(nextstage), env=env)
         if rv:
             raise RuntimeError('stage %s failed with %s' %
-                               (options.stage, str(rv)))
+                               (args.stage, str(rv)))
