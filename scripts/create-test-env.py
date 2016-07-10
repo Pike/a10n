@@ -53,7 +53,6 @@ pretxnchangegroup.a_singlehead = python:mozhghooks.single_head_per_branch.hook
 pushlog = %(env)s/version-control-tools/hgext/pushlog
 pushlog-feed = %(env)s/version-control-tools/hgext/pushlog-legacy/pushlog-feed.py
 buglink = %(env)s/version-control-tools/hgext/pushlog-legacy/buglink.py
-hgwebjson = %(env)s/version-control-tools/hgext/pushlog-legacy/hgwebjson.py
 '''
     hgrc = open(os.path.join(base, leaf, '.hg', 'hgrc'), 'a')
     hgrc.write(tail % {'env': os.path.abspath(env_path)})
@@ -137,7 +136,7 @@ def createEnvironment(env_path, hgcustom_orig, without_site):
             hgcustom_orig.startswith('https://')):
         hgcustom_orig = os.path.expanduser(hgcustom_orig)
         hgcustom_orig = os.path.abspath(hgcustom_orig)
-    ensureVCTRepository('008c8d7eb2d5', hgcustom_orig, env_path)
+    ensureVCTRepository('628aa8deebcc', hgcustom_orig, env_path)
 
 
 def setupEnvironment(env_path):
