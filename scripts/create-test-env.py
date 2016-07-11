@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 
-ENVPATH = 'env'
+ENVPATH = 'envs'
 
 
 def ensureVCTRepository(revision, hgcustom_orig, env_path):
@@ -41,8 +41,9 @@ def ensureRepo(leaf, dest, env_path, push_l10n=True):
     if os.path.isdir(os.path.join(base, leaf)):
         return
 
+    hg = os.path.abspath(os.path.join(env_path, 'hg', 'bin', 'hg'))
     os.makedirs(os.path.join(base, leaf))
-    rv = subprocess.call(['hg', 'init', leaf], cwd=base)
+    rv = subprocess.call([hg, 'init', leaf], cwd=base)
     if rv:
         raise RuntimeError('Couldnt hg init %s' % leaf)
     tail = '''
@@ -58,7 +59,7 @@ buglink = %(env)s/version-control-tools/hgext/pushlog-legacy/buglink.py
     hgrc.write(tail % {'env': os.path.abspath(env_path)})
     hgrc.close()
 
-    rv = subprocess.call(['hg', 'clone', leaf,
+    rv = subprocess.call([hg, 'clone', leaf,
                           os.path.join('..', 'workdir', leaf)],
                          cwd=base)
     if rv:
@@ -90,17 +91,17 @@ all = browser/locales/all-locales
 [compare]
 dirs = browser
 ''')
-    rv = subprocess.call(['hg', 'add', '.'], cwd=browserdir)
+    rv = subprocess.call([hg, 'add', '.'], cwd=browserdir)
     if rv:
         raise RuntimeError('failed to add initial content')
-    rv = subprocess.call(['hg', 'ci', '-mInitial commit for %s' % leaf],
+    rv = subprocess.call([hg, 'ci', '-mInitial commit for %s' % leaf],
                          cwd=browserdir)
     if rv:
         raise RuntimeError('failed to check in initian content to %s' %
                            leaf)
     if leaf.startswith('l10n') and not push_l10n:
         return
-    rv = subprocess.call(['hg', 'push'], cwd=browserdir)
+    rv = subprocess.call([hg, 'push'], cwd=browserdir)
     if rv:
         raise RuntimeError('failed to push to %s' % leaf)
 
@@ -119,39 +120,29 @@ templates = %(env)s/version-control-tools/hgtemplates
                                    'env': os.path.abspath(env_path)})
 
 
-def createEnvironment(env_path, hgcustom_orig, without_site):
-    '''Prepare a virtualenv to use for the following stages'''
-    # pretend that env/bin/activate is good enough to check this
-    if not os.path.isfile(os.path.join(env_path, 'bin', 'activate')):
-        venv_cmd = ['virtualenv']
-        if without_site:
-            venv_cmd.append('--no-site-packages')
-        else:
-            venv_cmd.append('--system-site-packages')
-        venv_cmd.append(env_path)
-        rv = subprocess.check_call(venv_cmd)
-        if rv:
-            raise RuntimeError("Failed to create virtualenv in " + env_path)
+def createEnvironment(env_path, hgcustom_orig):
+    '''Get version-control-tools and create hg and automation virtualenvs'''
     if not (hgcustom_orig.startswith('http://') or
             hgcustom_orig.startswith('https://')):
         hgcustom_orig = os.path.expanduser(hgcustom_orig)
         hgcustom_orig = os.path.abspath(hgcustom_orig)
     ensureVCTRepository('628aa8deebcc', hgcustom_orig, env_path)
-
-
-def setupEnvironment(env_path):
-    '''Prepare a virtualenv to use for the following stages'''
-    # pretend that env/bin/activate is good enough to check this
-    rv = subprocess.check_call(['pip', 'install', '-r',
-                                os.path.join(env_path, '..',
-                                             'requirements.txt')])
-    if rv:
-        raise RuntimeError("Failed to install requirements in " + env_path)
-    rv = subprocess.check_call(['python', 'setup.py', 'install'],
-                               cwd=os.path.join(env_path, 'version-control-tools',
-                                                'hghooks'))
-    if rv:
-        raise RuntimeError("Failed to install hghooks")
+    # pretend that envs/*/bin/activate is good enough to check this
+    for env in ('hg', 'automation'):
+        if not os.path.isfile(os.path.join(env_path, env, 'bin', 'activate')):
+            venv_cmd = ['virtualenv', os.path.join(env_path, env)]
+            rv = subprocess.check_call(venv_cmd)
+            if rv:
+                raise RuntimeError("Failed to create virtualenv %s in %s" %
+                                   (env, env_path))
+        pip = os.path.join(env_path, env, 'bin', 'pip')
+        rv = subprocess.check_call([pip, 'install', '-U', '-r',
+                                    os.path.join(env_path, '..',
+                                                 'requirements/' +
+                                                 env +
+                                                 '.txt')])
+        if rv:
+            raise RuntimeError("Failed to install requirements from " + env_path)
 
 
 def setupWorkdir(dest, env_path, push_l10n=False):
@@ -165,7 +156,6 @@ def setupWorkdir(dest, env_path, push_l10n=False):
     )
     if not os.path.isdir(os.path.join(dest, 'workdir', 'l10n')):
         os.makedirs(os.path.join(dest, 'workdir', 'l10n'))
-    subprocess.check_call(['which', 'hg'], cwd=dest)
 
     for l in downstreams:
         ensureRepo(l, dest, env_path, push_l10n=push_l10n)
@@ -177,50 +167,10 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("stagedir", help="Directory to use to create the staging environment")
     p.add_argument('-v', dest='verbose', action='store_true')
-    p.add_argument('--without-site', default=False, action='store_true',
-                 help='Disable site-packages in virtual envs [false]')
     p.add_argument('--hgcustom', default='http://hg.mozilla.org/hgcustom/')
-    g = p.add_argument_group('Internal use',
-                             'These options are to control'
-                             ' the flow of the script itself')
-    g.add_argument('--stage', default='env',
-                 help='Specify the stage to run [env|setup|repos]')
-    p.add_argument_group(g)
     args = p.parse_args()
 
     dest = args.stagedir
-
-    def nextcmd(stage):
-        rv = ['python', __file__]
-        for k, v in vars(args).iteritems():
-            if k == 'verbose':
-                if v:
-                    rv.append('-v')
-            elif k == 'without_site':
-                rv.append('--without-site')
-            elif k == 'hgcustom':
-                rv.append('--hgcustom=' + v)
-            elif k == 'stage':
-                rv.append('--stage=' + stage)
-        rv.append(dest)
-        return rv
-
-    nextstage = None
-    env = os.environ.copy()
-    if args.stage == 'env':
-        createEnvironment(ENVPATH, args.hgcustom, args.without_site)
-        nextstage = 'setup'
-        env['PATH'] = (os.path.abspath(os.path.join(ENVPATH, 'bin'))
-                       + os.pathsep
-                       + env['PATH'])
-    elif args.stage == 'setup':
-        setupEnvironment(ENVPATH)
-        nextstage = 'repos'
-    elif args.stage == 'repos':
-        setupWorkdir(dest, ENVPATH)
-        print 'done'
-    if nextstage is not None:
-        rv = subprocess.call(nextcmd(nextstage), env=env)
-        if rv:
-            raise RuntimeError('stage %s failed with %s' %
-                               (args.stage, str(rv)))
+    createEnvironment(ENVPATH, args.hgcustom)
+    setupWorkdir(dest, ENVPATH)
+    print 'done'

@@ -1,3 +1,5 @@
+# python requirements for automation
+# mercurial version tied to what automation supports
 mercurial==3.7.3
 Django==1.4.21
 Twisted==13.0.0

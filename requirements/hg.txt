@@ -1,0 +1,4 @@
+# python requirements for stage hg server and client
+# mercurial version tied to the support in version-control-tools
+mercurial==3.7.3
+./envs/version-control-tools/hghooks
