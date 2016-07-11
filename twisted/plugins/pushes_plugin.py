@@ -18,10 +18,7 @@ from datetime import datetime
 import re
 import os
 from urlparse import urljoin
-try:
-    import json
-except ImportError:
-    import simplejson as json
+import json
 
 import site
 site.addsitedir('vendor-local')
