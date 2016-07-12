@@ -11,7 +11,7 @@ from kombu.mixins import ConsumerMixin
 
 from .queues import hg_queues
 
-from pushes.utils import handlePushes, PushJS
+from .utils import handlePushes, PushJS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 logger = logging.getLogger()
