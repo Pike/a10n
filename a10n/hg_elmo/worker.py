@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 from __future__ import with_statement
+from __future__ import absolute_import
 import time
 import logging
 
@@ -68,6 +69,8 @@ class Worker(ConsumerMixin):
 
 def run(args):
     from django.conf import settings
+    import django
+    django.setup()
 
     with Connection(settings.TRANSPORT) as conn:
         try:

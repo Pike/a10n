@@ -4,6 +4,7 @@
 
 '''Utility methods used by the twistd daemon and other hooks.
 '''
+from __future__ import absolute_import, division
 
 from datetime import datetime
 import os.path
@@ -14,8 +15,8 @@ from mercurial.commands import pull, update, clone
 
 from life.models import Repository, Push, Changeset, Branch, File
 from django.conf import settings
-from django.db import connection
 from django.db import transaction
+from six.moves import range
 
 
 def getURL(repo, limit):
@@ -44,7 +45,7 @@ def get_or_create_changeset(repo, hgrepo, revision):
         pass
     # create the changeset, but first, let's see if we need the parents
     ctx = hgrepo.changectx(revision)
-    parents = map(lambda _cx: _cx.hex(), ctx.parents())
+    parents = [_cx.hex() for _cx in ctx.parents()]
     p_dict = dict(Changeset.objects
                   .filter(revision__in=parents)
                   .values_list('revision', 'id'))
@@ -65,36 +66,34 @@ def get_or_create_changeset(repo, hgrepo, revision):
     # has an ID
     cs.save()
 
-    cs.parents = p_dict.values()
-    repo.changesets.add(cs, *(p_dict.values()))
+    cs.parents = list(p_dict.values())
+    repo.changesets.add(cs, *(list(p_dict.values())))
     spacefiles = [p for p in ctx.files() if p.endswith(' ')]
     goodfiles = [p for p in ctx.files() if not p.endswith(' ')]
     if goodfiles:
         # chunk up the work on files,
         # mysql doesn't like them all at once
-        chunk_count = len(goodfiles) / 1000 + 1
-        chunk_size = len(goodfiles) / chunk_count
+        chunk_count = len(goodfiles) // 1000 + 1
+        chunk_size = len(goodfiles) // chunk_count
         if len(goodfiles) % chunk_size:
             chunk_size += 1
-        for i in xrange(chunk_count):
+        for i in range(chunk_count):
             good_chunk = goodfiles[i * chunk_size:(i + 1) * chunk_size]
             existingfiles = File.objects.filter(path__in=good_chunk)
             existingpaths = existingfiles.values_list('path',
                                                       flat=True)
             existingpaths = dict.fromkeys(existingpaths)
-            missingpaths = filter(lambda p: p not in existingpaths,
-                                  good_chunk)
-            cursor = connection.cursor()
-            cursor.executemany('INSERT INTO %s (path) VALUES (%%s)' %
-                               File._meta.db_table,
-                               map(lambda p: (p,), missingpaths))
+            missingpaths = [p for p in good_chunk if p not in existingpaths]
+            File.objects.bulk_create([
+                File(path=p)
+                for p in missingpaths
+            ])
             good_ids = File.objects.filter(path__in=good_chunk)
             cs.files.add(*list(good_ids.values_list('pk', flat=True)))
     for path in spacefiles:
         # hack around mysql ignoring trailing ' ', and some
         # of our localizers checking in files with trailing ' '.
-        f = filter(lambda fo: fo.path == path,
-                   File.objects.filter(path=path))
+        f = [fo for fo in File.objects.filter(path=path) if fo.path == path]
         if f:
             cs.files.add(f[0])
         else:
@@ -105,26 +104,28 @@ def get_or_create_changeset(repo, hgrepo, revision):
     return cs
 
 
-@transaction.commit_on_success
 def handlePushes(repo_id, submits, do_update=True):
     if not submits:
         return
     repo = Repository.objects.get(id=repo_id)
     hgrepo = _hg_repository_sync(repo.name, repo.url, submits,
                                  do_update=do_update)
-    for data in submits:
-        changesets = []
-        for revision in data.changesets:
-            cs = get_or_create_changeset(repo, hgrepo, revision)
-            changesets.append(cs)
-        p, __ = Push.objects.get_or_create(
-          repository=repo,
-          push_id=data.id, user=data.user,
-          push_date=datetime.utcfromtimestamp(data.date)
-        )
-        p.changesets = changesets
-        p.save()
-    repo.save()
+    # roll the complete push into one transaction, with all the jazz
+    # about changesets and files and etc.
+    with transaction.atomic():
+        for data in submits:
+            changesets = []
+            for revision in data.changesets:
+                cs = get_or_create_changeset(repo, hgrepo, revision)
+                changesets.append(cs)
+            p, __ = Push.objects.get_or_create(
+              repository=repo,
+              push_id=data.id, user=data.user,
+              push_date=datetime.utcfromtimestamp(data.date)
+            )
+            p.changesets = changesets
+            p.save()
+        repo.save()
     return len(submits)
 
 

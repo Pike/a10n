@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from base import *
 
 DATABASES = {
@@ -17,6 +18,8 @@ DATABASES = {
         'TEST_COLLATION': 'utf8_general_ci',
     },
 }
+
+SECRET_KEY = ''  # make this the same as in your elmo config
 
 REPOSITORY_BASE = ''  # '/home/stage/repos'
 TRANSPORT = ''  # 'amqp://guest:guest@localhost:5672//'

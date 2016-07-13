@@ -5,6 +5,7 @@
 '''Twisted plugin to scrape pushlog json hooks of the upstream repos.
 '''
 
+from __future__ import absolute_import
 from zope.interface import implements
 
 from twisted.python import usage, log
@@ -21,6 +22,9 @@ from urlparse import urljoin
 import json
 
 import site
+import six
+from six.moves import map
+from six.moves import range
 site.addsitedir('vendor-local')
 
 from kombu import Connection
@@ -56,7 +60,7 @@ class pushback_iter(object):
             return True
 
         try:
-            self.pushed_back.insert(0, self.it.next())
+            self.pushed_back.insert(0, next(self.it))
         except StopIteration:
             return False
         else:
@@ -65,7 +69,7 @@ class pushback_iter(object):
     def next(self):
         if self.pushed_back:
             return self.pushed_back.pop()
-        return self.it.next()
+        return next(self.it)
 
     def pushback(self, item):
         self.pushed_back.append(item)
@@ -76,6 +80,8 @@ def getPoller(options):
                                             "a10n.settings")
     from django.conf import settings
     from life.models import Repository, Forest, Locale
+    import django
+    django.setup()
 
     class PushPoller(object):
         '''PushPoller stores the state of our coopertive iterator.
@@ -189,8 +195,8 @@ def getPoller(options):
             if repo.id not in self.cache:
                 self.cache[repo.id] = []
             # pushes maps string keys to pushes, we want to order by number
-            push_blobs = [dict(pushes[id].items() + [('id', int(id))])
-                          for id in pushes.iterkeys()]
+            push_blobs = [dict(list(pushes[id].items()) + [('id', int(id))])
+                          for id in six.iterkeys(pushes)]
             push_blobs.sort(key=lambda blob: blob['id'])
             self.cache[repo.id] += push_blobs
             # signal to load more data if this push hit the limits
@@ -212,7 +218,7 @@ def getPoller(options):
                                                  repo.name))
 
             tips = sorted(((id, p[0]['date'])
-                           for id, p in self.cache.iteritems() if p),
+                           for id, p in six.iteritems(self.cache) if p),
                           key=lambda t: t[1])
             while pushes:
                 if tips and pushes[0]['date'] > tips[0][1]:
@@ -243,7 +249,7 @@ def getPoller(options):
                             self.repos.pushback(other_repo)
                             return
                     tips = sorted(((id, p[0]['date'])
-                                   for id, p in self.cache.iteritems() if p),
+                                   for id, p in six.iteritems(self.cache) if p),
                                   key=lambda t: t[1])
                 else:
                     i = 0
@@ -263,12 +269,12 @@ def getPoller(options):
                     del pushes[:i]
 
         def gotForest(self, page, forest, repos):
-            links = filter(None, re.split(r'\s+', page))
-            urls = map(lambda link: urljoin(forest.url, link), links)
+            links = [_f for _f in re.split(r'\s+', page) if _f]
+            urls = [urljoin(forest.url, link) for link in links]
             q = Repository.objects.filter(url__in=urls)
             repos += list(q)
             known_urls = q.values_list('url', flat=True)
-            for i in xrange(len(urls)):
+            for i in range(len(urls)):
                 if urls[i] in known_urls:
                     continue
                 name = links[i].strip('/')
