@@ -1,7 +1,8 @@
 # python requirements for automation
 # mercurial version tied to what automation supports
 mercurial==3.7.3
-Django==1.8.13
+python-hglib==2.3
+Django==1.8.17
 six==1.10.0
 Twisted==16.3.0
 amqp==1.4.9
