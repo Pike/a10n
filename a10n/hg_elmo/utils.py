@@ -12,7 +12,7 @@ import hglib
 
 from life.models import Repository, Push, Changeset, Branch, File
 from django.conf import settings
-from django.db import transaction
+from django.db import transaction, connection
 from six.moves import range
 
 
@@ -103,6 +103,8 @@ def get_or_create_changeset(repo, hgrepo, ctx):
 def handlePushes(repo_id, submits, do_update=True):
     if not submits:
         return
+    # maybe we lost the connection, close it to make sure we get a new one
+    connection.close()
     repo = Repository.objects.get(id=repo_id)
     hgrepo = _hg_repository_sync(repo.name, repo.url, submits,
                                  do_update=do_update)
