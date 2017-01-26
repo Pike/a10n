@@ -143,7 +143,7 @@ def _hg_repository_sync(name, url, submits, do_update=True):
         cs = submits[-1].changesets[-1]
         try:
             hgrepo[cs]
-        except IndexError:
+        except KeyError:
             hgrepo.pull(source=str(url))
             if do_update:
                 hgrepo.update()
