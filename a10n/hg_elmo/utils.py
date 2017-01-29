@@ -124,6 +124,7 @@ def handlePushes(repo_id, submits, do_update=True):
             p.changesets = changesets
             p.save()
         repo.save()
+    hgrepo.close()
     return len(submits)
 
 
