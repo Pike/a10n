@@ -82,6 +82,7 @@ def getPoller(options):
     from life.models import Repository, Forest, Locale
     import django
     django.setup()
+    from django.db import connection as db_connection
 
     class PushPoller(object):
         '''PushPoller stores the state of our coopertive iterator.
@@ -153,6 +154,7 @@ def getPoller(options):
                     lag = n - self.start_cycle
                     log.msg("Cycle took %d seconds" % lag.seconds)
                 self.start_cycle = n
+                db_connection.close()
                 repos = list(Repository.objects.filter(forest__isnull=True,
                                                        archived=False))
                 nonarchived_forests = (Forest.objects
