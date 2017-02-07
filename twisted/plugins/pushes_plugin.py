@@ -17,15 +17,12 @@ from twisted.web.client import getPage, HTTPClientFactory
 from twisted.web.error import Error as WebError
 
 from datetime import datetime
-import re
 import os
-from urlparse import urljoin
 import json
 
 import site
 import six
 from six.moves import map
-from six.moves import range
 site.addsitedir('vendor-local')
 
 from kombu import Connection
@@ -162,7 +159,7 @@ def getPoller(options):
                                        .filter(archived=False))
                 self.forests = pushback_iter(nonarchived_forests)
                 for forest in self.forests:
-                    url = str(forest.url + '?style=raw')
+                    url = str(forest.url + '?style=json')
                     d = getPage(url, timeout=self.timeout)
                     d.addCallback(self.gotForest, forest, repos)
                     d.addErrback(self.failedForest, forest)
@@ -272,24 +269,31 @@ def getPoller(options):
                     del pushes[:i]
 
         def gotForest(self, page, forest, repos):
-            links = [_f for _f in re.split(r'\s+', page) if _f]
-            urls = [urljoin(forest.url, link) for link in links]
-            q = Repository.objects.filter(url__in=urls)
-            repos += list(q)
-            known_urls = q.values_list('url', flat=True)
-            for i in range(len(urls)):
-                if urls[i] in known_urls:
-                    continue
-                name = links[i].strip('/')
+            entries = json.loads(page)['entries']
+            locale_codes = [entry['name'] for entry in entries]
+            q = forest.repositories.filter(locale__code__in=locale_codes)
+            repos += list(q.filter(archived=False))
+            known_locales = set(q.values_list('locale__code', flat=True))
+            new_locales = set(locale_codes) - known_locales
+            for locale in new_locales:
+                locale, _ = Locale.objects.get_or_create(code=locale)
+                name = forest.name + u'/' + locale.code
+                url = u'%s%s/' % (forest.url, locale.code)
                 if self.debug:
-                    log.msg("adding %s: %s" % (name, urls[i]))
+                    log.msg(u"adding %s: %s" % (name, url))
                 # Forests are holding l10n repos, set locale
-                locale, create = \
-                    Locale.objects.get_or_create(code=name.rsplit('/', 1)[1])
-                r = Repository.objects.create(name=name, url=urls[i],
+                r = Repository.objects.create(name=name, url=url,
                                               locale=locale,
                                               forest=forest)
                 repos.append(r)
+            # if there's a repo in the forest that's removed upstream,
+            # it should be archived
+            cnt = (forest.repositories
+                   .exclude(locale__code__in=locale_codes)
+                   .exclude(archived=True)
+                   .update(archived=True))
+            if cnt:
+                log.msg(u"Archived %s repos in %s" % (cnt, forest.name))
 
         def failedForest(self, failure, forest):
             if failure.check(task.SchedulerStopped):
