@@ -14,6 +14,7 @@ from twisted.application.service import IServiceMaker
 from twisted.application import internet
 from twisted.internet import task, defer, reactor
 from twisted.web.client import getPage, HTTPClientFactory
+from twisted.web.error import Error as WebError
 
 from datetime import datetime
 import re
@@ -295,13 +296,27 @@ def getPoller(options):
                 failure.raiseException()
             log.err(failure, "failed to load %s" % forest.name)
             self.forests.pushback(forest)
+            return self.backoff()
 
         def jsonErr(self, failure, repo):
             if failure.check(task.SchedulerStopped):
                 failure.raiseException()
+            if failure.check(WebError) and failure.value.status == '404':
+                repo.archived = True
+                repo.save()
+                log.msg('Archived %s, it is not available upstream no more' %
+                        repo.name)
+                return
             log.err(failure,
                     "failed to load json for %s, adding back" % repo.name)
             self.repos.pushback(repo)
+            return self.backoff()
+
+        def backoff(self):
+            # back off a little
+            d = defer.Deferred()
+            reactor.callLater(5, lambda: d.callback(None))
+            return d
 
     pp = PushPoller(options)
     return pp.poll()
