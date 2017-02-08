@@ -2,5 +2,6 @@ envs/
 *.pyc
 twistd.log
 twistd.pid
+hg.log
 twisted/plugins/dropin.cache
 a10n/settings/local.py
