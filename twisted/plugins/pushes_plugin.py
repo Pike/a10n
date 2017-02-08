@@ -81,6 +81,7 @@ def getPoller(options):
     import django
     django.setup()
     from django.db import connection as db_connection
+    from django.db.models import Max
 
     class PushPoller(object):
         '''PushPoller stores the state of our coopertive iterator.
@@ -105,14 +106,29 @@ def getPoller(options):
             pass
 
         def getURL(self, repo, limit):
+            # If we haven't seen this repo yet
+            # only store last-known-push if there
+            # are existing pushes.
+            # Otherwise, let's keep this unset
+            # and use that to trigger the initial clone
+            # after loading the initial json-pushes.
+            # That will then set latest_push to something,
+            # maybe even just 0 for an empty/unpushed repo.
             if repo.id not in self.latest_push:
-                self.latest_push[repo.id] = repo.last_known_push()
-            lkp = self.latest_push[repo.id]
+                lkp = repo.last_known_push()
+                if lkp:
+                    self.latest_push[repo.id] = lkp
+            else:
+                lkp = self.latest_push[repo.id]
             return '%sjson-pushes?startID=%d&endID=%d' % \
                 (repo.url, lkp, lkp + limit)
 
         def handlePushes(self, repo_id, submits):
-            self.latest_push[repo_id] = submits[-1]['id']
+            if submits:
+                self.latest_push[repo_id] = submits[-1]['id']
+            else:
+                # empty/unpushed repo, use 0 as last push id.
+                self.latest_push[repo_id] = 0
             connection = Connection(settings.TRANSPORT)
             with producers[connection].acquire(block=True) as producer:
                 maybe_declare(hg_exchange, producer.channel)
@@ -146,6 +162,12 @@ def getPoller(options):
             This iterator doesn't terminate, but gets killed together
             with the service.
             '''
+            # get our last-known push IDs for all non-archived repos
+            self.latest_push.update(
+                Repository.objects
+                .filter(archived=False, push__isnull=False)
+                .annotate(last_push=Max('push__push_id'))
+                .values_list('id', 'last_push'))
             while True:
                 n = datetime.now()
                 if self.start_cycle is not None:
@@ -167,7 +189,7 @@ def getPoller(options):
                 self.repos = pushback_iter(repos)
                 for repo in self.repos:
                     d = None
-                    if repo.id in self.cache and self.cache[repo.id]:
+                    if repo.id in self.cache:
                         pushes = self.cache.pop(repo.id)
                         self.processPushes(pushes, repo)
                         if pushes:
@@ -188,7 +210,8 @@ def getPoller(options):
 
         def loadJSON(self, page, repo):
             pushes = json.loads(page)
-            if not pushes:
+            if not pushes and repo.id in self.latest_push:
+                # No new pushes to an existing repo
                 return
             log.msg("%s got %d pushes" % (repo.name, len(pushes)))
             # convert pushes to sorted list
@@ -220,6 +243,10 @@ def getPoller(options):
             tips = sorted(((id, p[0]['date'])
                            for id, p in six.iteritems(self.cache) if p),
                           key=lambda t: t[1])
+            if not pushes:
+                # This is a new repository, let's notify the hg worker
+                # to get us a clone
+                self.handlePushes(repo.id, [])
             while pushes:
                 if tips and pushes[0]['date'] > tips[0][1]:
                     # other repos come first, get them done

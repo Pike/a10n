@@ -40,8 +40,7 @@ class Worker(ConsumerMixin):
         logger.info('got hg-push message %r', body)
         try:
             handlePushes(body['repository_id'],
-                         [PushJS(p['id'], p) for p in body['pushes']],
-                         do_update=False)
+                         [PushJS(p['id'], p) for p in body['pushes']])
             self.retries = 0
         except KeyboardInterrupt:
             raise

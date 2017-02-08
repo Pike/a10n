@@ -7,7 +7,9 @@
 from __future__ import absolute_import, division
 
 from datetime import datetime
+import json
 import os.path
+import urllib2
 import hglib
 
 from life.models import Repository, Push, Changeset, Branch, File
@@ -100,22 +102,30 @@ def get_or_create_changeset(repo, hgrepo, ctx):
     return cs
 
 
-def handlePushes(repo_id, submits, do_update=True):
-    if not submits:
-        return
+def handlePushes(repo_id, submits):
     # maybe we lost the connection, close it to make sure we get a new one
     connection.close()
     repo = Repository.objects.get(id=repo_id)
-    hgrepo = _hg_repository_sync(repo.name, repo.url, submits,
-                                 do_update=do_update)
+    hgrepo = _hg_repository_sync(repo.name, repo.url)
+    revs = reduce(
+        lambda r, l: r+l,
+        (data.changesets for data in submits),
+        [])
+    if not revs:
+        r = urllib2.urlopen(repo.url + u'json-log?rev=head()')
+        data = json.load(r)
+        revs += [d['node'] for d in data['entries']]
+        if not revs:
+            revs.append(data['node'])
+    rev_to_changeset = {}
+    for revision in revs:
+        rev_to_changeset[revision] = \
+            get_or_create_changeset(repo, hgrepo, hgrepo[revision])
     # roll the complete push into one transaction, with all the jazz
     # about changesets and files and etc.
     with transaction.atomic():
         for data in submits:
-            changesets = []
-            for revision in data.changesets:
-                cs = get_or_create_changeset(repo, hgrepo, hgrepo[revision])
-                changesets.append(cs)
+            changesets = [rev_to_changeset[rev] for rev in data.changesets]
             p, __ = Push.objects.get_or_create(
               repository=repo,
               push_id=data.id, user=data.user,
@@ -128,7 +138,7 @@ def handlePushes(repo_id, submits, do_update=True):
     return len(submits)
 
 
-def _hg_repository_sync(name, url, submits, do_update=True):
+def _hg_repository_sync(name, url):
     repopath = os.path.join(settings.REPOSITORY_BASE, name)
     configpath = os.path.join(repopath, '.hg', 'hgrc')
     if not os.path.isfile(configpath):
@@ -141,11 +151,5 @@ def _hg_repository_sync(name, url, submits, do_update=True):
         hgrepo.open()
     else:
         hgrepo = hglib.open(repopath)
-        cs = submits[-1].changesets[-1]
-        try:
-            hgrepo[cs]
-        except KeyError:
-            hgrepo.pull(source=str(url))
-            if do_update:
-                hgrepo.update()
+        hgrepo.pull(source=str(url))
     return hgrepo
