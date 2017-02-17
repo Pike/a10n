@@ -102,11 +102,13 @@ def get_or_create_changeset(repo, hgrepo, ctx):
     return cs
 
 
-def handlePushes(repo_id, submits):
-    # maybe we lost the connection, close it to make sure we get a new one
-    connection.close()
+def handlePushes(repo_id, submits, do_update=False, close_connection=False):
+    if close_connection:
+        # maybe we lost the connection, close it to make sure we get a new one
+        connection.close()
     repo = Repository.objects.get(id=repo_id)
-    hgrepo = _hg_repository_sync(repo.name, repo.url)
+    hgrepo = _hg_repository_sync(repo.local_path(), repo.url,
+                                 do_update=do_update)
     revs = reduce(
         lambda r, l: r+l,
         (data.changesets for data in submits),
@@ -138,8 +140,7 @@ def handlePushes(repo_id, submits):
     return len(submits)
 
 
-def _hg_repository_sync(name, url):
-    repopath = os.path.join(settings.REPOSITORY_BASE, name)
+def _hg_repository_sync(repopath, url, do_update=False):
     configpath = os.path.join(repopath, '.hg', 'hgrc')
     if not os.path.isfile(configpath):
         if not os.path.isdir(os.path.dirname(repopath)):
@@ -152,4 +153,6 @@ def _hg_repository_sync(name, url):
     else:
         hgrepo = hglib.open(repopath)
         hgrepo.pull(source=str(url))
+        if do_update:
+            hgrepo.update()
     return hgrepo
