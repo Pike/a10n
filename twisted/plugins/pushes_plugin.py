@@ -124,11 +124,6 @@ def getPoller(options):
                 (repo.url, lkp, lkp + limit)
 
         def handlePushes(self, repo_id, submits):
-            if submits:
-                self.latest_push[repo_id] = submits[-1]['id']
-            else:
-                # empty/unpushed repo, use 0 as last push id.
-                self.latest_push[repo_id] = 0
             connection = Connection(settings.TRANSPORT)
             with producers[connection].acquire(block=True) as producer:
                 maybe_declare(hg_exchange, producer.channel)
@@ -222,6 +217,10 @@ def getPoller(options):
                           for id in six.iterkeys(pushes)]
             push_blobs.sort(key=lambda blob: blob['id'])
             self.cache[repo.id] += push_blobs
+            if push_blobs:
+                self.latest_push[repo.id] = push_blobs[-1]['id']
+            else:
+                self.latest_push[repo.id] = 0
             # signal to load more data if this push hit the limits
             if len(pushes) == self.limit:
                 self.moredata[repo.id] = True
@@ -269,6 +268,10 @@ def getPoller(options):
                     del other[:i]
                     if not other:
                         # other repo is empty
+                        self.cache.pop(tips[0][0])
+                        if self.debug:
+                            log.msg(('Repo id %d fully pushed as part of '
+                                     'other repo') % tips[0][0])
                         # let's see if we need to load more
                         if tips[0][0] in self.moredata:
                             self.moredata.pop(tips[0][0])
