@@ -39,5 +39,7 @@ if args.cmd == 'help':
 os.environ["DJANGO_SETTINGS_MODULE"] = args.settings
 
 if args.cmd == 'hg':
+    import django
+    django.setup()
     import a10n.hg_elmo.worker
     a10n.hg_elmo.worker.run(args)

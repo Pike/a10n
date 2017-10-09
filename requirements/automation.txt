@@ -2,7 +2,7 @@
 # mercurial version tied to what automation supports
 mercurial==4.2.2
 python-hglib==2.4
-Django==1.8.17
+Django==1.11.6
 six==1.10.0
 Twisted==17.5.0
 amqp==2.2.1

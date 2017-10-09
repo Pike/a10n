@@ -76,10 +76,10 @@ class pushback_iter(object):
 def getPoller(options):
     os.environ["DJANGO_SETTINGS_MODULE"] = (options["settings"] or
                                             "a10n.settings")
-    from django.conf import settings
-    from life.models import Repository, Forest, Locale
     import django
     django.setup()
+    from django.conf import settings
+    from life.models import Repository, Forest, Locale
     from django.db import connection as db_connection
     from django.db.models import Max
 
